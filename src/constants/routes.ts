@@ -1,0 +1,30 @@
+export const ROUTES = {
+  LOGIN: '/login',
+  VERIFY: '/verify',
+  DASHBOARD: '/',
+  SCHEMAS: '/schemas',
+  SCHEMA_CREATE: '/schemas/create',
+  SCHEMA_DETAIL: (schemaName: string) => `/schemas/${schemaName}` as const,
+  FEATURES: '/features',
+  FEATURE_DETAIL: (schemaName: string) => `/features/${schemaName}` as const,
+  TICKETS: '/tickets',
+  TICKET_DETAIL: (ticketId: string) => `/tickets/${ticketId}` as const,
+  USERS: '/users',
+  USER_CREATE: '/users/create',
+  PROFILE: '/profile',
+} as const
+
+export const API_ROUTES = {
+  AUTH_ME: '/api/auth/me',
+  AUTH_LOGOUT: '/api/auth/logout',
+  SCHEMAS: '/api/schemas',
+  SCHEMA: (schemaName: string) => `/api/schemas/${schemaName}` as const,
+  SCHEMA_FIELDS: (schemaName: string) => `/api/schemas/${schemaName}/fields` as const,
+  SCHEMA_FIELD: (schemaName: string, fieldId: string) => `/api/schemas/${schemaName}/fields/${fieldId}` as const,
+  FEATURE_FIELDS: (featureName: string) => `/api/features/${featureName}/fields` as const,
+  FEATURE_FIELD_VALUE: (featureName: string, fieldId: string) => `/api/features/${featureName}/fields/${fieldId}/value` as const,
+  FEATURE_REFERENCES: (schemaName: string) => `/api/features/${schemaName}/references` as const,
+  FEATURE_REFERENCE: (schemaName: string, referenceId: string) => `/api/features/${schemaName}/references/${referenceId}` as const,
+  FEATURES: '/api/features',
+  PUBLIC_FEATURE: (featureName: string) => `/api/public/features/${featureName}` as const,
+} as const

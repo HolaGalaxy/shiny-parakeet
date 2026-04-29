@@ -1,0 +1,218 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum FieldValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  ARRAY
+  OBJECT
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  READ_WRITE
+  READ_ONLY
+}
+
+enum TicketStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TicketType {
+  SCHEMA_FIELD_ADD
+  SCHEMA_FIELD_UPDATE
+  SCHEMA_FIELD_DELETE
+  FEATURE_VALUE_UPDATE
+}
+
+enum NotificationType {
+  TICKET_CREATED
+  TICKET_APPROVED
+  TICKET_REJECTED
+  USER_INVITED
+  USER_ACTIVATED
+}
+
+model User {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String?   @db.VarChar(256)
+  email          String    @unique @db.VarChar(320)
+  username       String    @unique @db.VarChar(128)
+  password       String    @db.VarChar(255)
+  role           UserRole  @default(READ_ONLY)
+  isActive       Boolean   @default(false)
+  isDeleted      Boolean   @default(false)
+  inviteToken    String?   @unique @db.VarChar(128)
+  inviteExpiresAt DateTime? @db.Timestamptz
+  profilePicture String?   @db.VarChar(512)
+  sessionVersion Int       @default(0)
+  createdAt      DateTime  @default(now()) @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @db.Timestamptz
+
+  auditLogs          AuditLog[]
+  ticketsCreated     Ticket[]       @relation("TicketCreator")
+  ticketsReviewed    Ticket[]       @relation("TicketReviewer")
+  notifications      Notification[]
+
+  @@index([email])
+  @@index([inviteToken])
+  @@index([isDeleted, role])
+}
+
+model Schema {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// URL-safe identifier; unique; validate app-side: ^[a-z_-]+$, max 128, no digits.
+  name      String   @unique @db.VarChar(128)
+  description String @db.VarChar(320)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  fields  SchemaField[]
+  feature Feature?
+}
+
+model Feature {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schemaId  String   @unique @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  schema      Schema              @relation(fields: [schemaId], references: [id], onDelete: Cascade)
+  fieldValues FeatureFieldValue[]
+
+  referencesOutbound FieldReference[] @relation("ConsumerFeature")
+  referencesInbound  FieldReference[] @relation("TargetFeature")
+}
+
+model SchemaField {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schemaId     String         @db.Uuid
+  /// Validate app-side: ^[a-z_-]+$, max 128, no digits.
+  name         String         @db.VarChar(128)
+  valueType    FieldValueType
+  defaultValue Json
+  createdAt    DateTime       @default(now()) @db.Timestamptz
+
+  schema Schema @relation(fields: [schemaId], references: [id], onDelete: Cascade)
+
+  featureValue        FeatureFieldValue?
+  referenceAsConsumer FieldReference?    @relation("ReferenceConsumerField")
+  referencesAsTarget  FieldReference[]   @relation("ReferenceTargetField")
+
+  @@unique([schemaId, name])
+  @@index([schemaId, createdAt, id])
+}
+
+model FeatureFieldValue {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  featureId     String   @db.Uuid
+  schemaFieldId String   @unique @db.Uuid
+  /// null = no override (effective value comes from schema default or reference resolution).
+  value         Json?
+  updatedAt     DateTime @updatedAt @db.Timestamptz
+
+  feature     Feature     @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  schemaField SchemaField @relation(fields: [schemaFieldId], references: [id], onDelete: Cascade)
+
+  @@index([featureId])
+}
+
+model FieldReference {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  consumerFeatureId     String @db.Uuid
+  consumerSchemaFieldId String @unique @db.Uuid
+
+  targetFeatureId     String @db.Uuid
+  targetSchemaFieldId String @db.Uuid
+
+  consumerFeature Feature     @relation("ConsumerFeature", fields: [consumerFeatureId], references: [id], onDelete: Cascade)
+  consumerField   SchemaField @relation("ReferenceConsumerField", fields: [consumerSchemaFieldId], references: [id], onDelete: Cascade)
+
+  targetFeature Feature     @relation("TargetFeature", fields: [targetFeatureId], references: [id], onDelete: Cascade)
+  targetField   SchemaField @relation("ReferenceTargetField", fields: [targetSchemaFieldId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  @@index([consumerFeatureId])
+  @@index([targetFeatureId, targetSchemaFieldId])
+}
+
+model AuditLog {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorEmail  String      @db.VarChar(320)
+  actorUserId String?     @db.Uuid
+  entityType  String      @db.VarChar(64)
+  entityId    String      @db.Uuid
+  action      AuditAction
+  payload     Json?
+  createdAt   DateTime    @default(now()) @db.Timestamptz
+
+  actorUser User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId, createdAt(sort: Desc)])
+  @@index([actorEmail, createdAt(sort: Desc)])
+  @@index([actorUserId])
+}
+
+model Ticket {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type            TicketType
+  status          TicketStatus @default(PENDING)
+  /// The schema this ticket relates to.
+  schemaId        String       @db.Uuid
+  /// Nullable — set when ticket targets a specific field.
+  schemaFieldId   String?      @db.Uuid
+  /// Nullable — set when ticket targets a feature value.
+  featureId       String?      @db.Uuid
+  /// Snapshot of previous state (null for new additions).
+  oldValue        Json?
+  /// Proposed new state.
+  newValue        Json
+  /// Optional reason provided by reviewer on reject.
+  reviewComment   String?      @db.VarChar(1024)
+  createdById     String       @db.Uuid
+  reviewedById    String?      @db.Uuid
+  reviewedAt      DateTime?    @db.Timestamptz
+  createdAt       DateTime     @default(now()) @db.Timestamptz
+  updatedAt       DateTime     @updatedAt @db.Timestamptz
+
+  createdBy  User  @relation("TicketCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("TicketReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([schemaFieldId, status], map: "uq_one_pending_per_field")
+  @@index([schemaId, status])
+  @@index([createdById])
+  @@index([status, createdAt(sort: Desc)])
+}
+
+model Notification {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String           @db.Uuid
+  type      NotificationType
+  title     String           @db.VarChar(256)
+  message   String           @db.VarChar(1024)
+  metadata  Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt(sort: Desc)])
+}
