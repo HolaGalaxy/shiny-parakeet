@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import type { KeyedMutator } from 'swr'
 import { API_ROUTES } from '@/constants/routes'
 import type { FeatureFieldRow, FeatureFieldsResponse } from '@/types/feature'

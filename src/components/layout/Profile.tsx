@@ -57,23 +57,23 @@ const Profile = () => {
           <SimpleBar>
             {profileMenuItems.map((item, index) => (
               <DropdownMenuItem key={index} asChild>
-                <Link href={item.url} className='px-4 py-2 flex justify-between items-center group/link w-full hover:bg-lightprimary hover:text-primary'>
+                <Link href={item.url} className='px-4 py-2 flex justify-between items-center group/link w-full hover:bg-lightprimary'>
                   <div className='flex items-center gap-3 w-full'>
-                    <Icon icon={item.icon} className='text-lg text-slateGray group-hover/link:text-primary' />
-                    <h5 className='mb-0 text-sm text-slateGray group-hover/link:text-primary'>{item.title}</h5>
+                    <Icon icon={item.icon} className='text-lg text-foreground group-hover/link:text-primary' />
+                    <h5 className='mb-0 text-sm text-foreground group-hover/link:text-primary'>{item.title}</h5>
                   </div>
                 </Link>
               </DropdownMenuItem>
             ))}
           </SimpleBar>
 
-          <DropdownMenuSeparator className='my-2' />
+          {/* <DropdownMenuSeparator className='my-2' /> */}
 
-          <div className='px-4'>
+          {/* <div className='px-4'>
             <Button variant='outline' className='w-full rounded-full' onClick={handleLogout}>
               Logout
             </Button>
-          </div>
+          </div> */}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

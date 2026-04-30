@@ -15,6 +15,7 @@ import { validateAndUpdateFields, ValidateFields } from '@/utils/fields'
 import { constructPayloadFromFields } from '@/utils/payload'
 import { parseFormValueToJson } from '@/utils/json'
 import { errorToast, successToast } from '@/utils/toast'
+import { fetcher } from '@/utils/fetcher'
 import { Loader2 } from 'lucide-react'
 import { type CreateFieldPayload, FIELD_CREATION_MAPPING, fieldCreationFields } from './fields'
 
@@ -46,11 +47,6 @@ const headers: ITableHeader[] = [
   { name: ColumnNames.Delete, key: 'action', label: 'Action', align: 'left' },
 ]
 
-const fetcher = async (url: string): Promise<SchemaDetailResponse> => {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('Failed to fetch schema')
-  return res.json() as Promise<SchemaDetailResponse>
-}
 
 type Props = { schemaName: string }
 
@@ -232,17 +228,15 @@ export default function SchemaFieldList({ schemaName }: Props) {
       <JsonEditorDialog
         state={editorState}
         onOpenChange={(open) => { if (!open) setEditorState(EDITOR_CLOSED) }}
-        onClick={onEditorSave}
-        renderFooter={({ draftRef, isPending: saving }) => (
+        renderFooter={({ draft, setDraft, isValueChanged }) => (
           <div className='flex justify-between pt-2'>
             <Button
               variant='outline'
               size='sm'
-              disabled={saving}
+              disabled={isPending}
               onClick={() => {
                 try {
-                  const parsed: unknown = JSON.parse(draftRef.current)
-                  draftRef.current = JSON.stringify(parsed, null, 2)
+                  setDraft(JSON.stringify(JSON.parse(draft), null, 2))
                 } catch {
                   errorToast('Invalid JSON — cannot format')
                 }
@@ -251,15 +245,15 @@ export default function SchemaFieldList({ schemaName }: Props) {
               Format JSON
             </Button>
             <div className='flex gap-3'>
-              <Button variant='destructive' className='rounded-full text-white' onClick={() => setEditorState(EDITOR_CLOSED)} disabled={saving}>
+              <Button variant='destructive' className='rounded-full text-white' onClick={() => setEditorState(EDITOR_CLOSED)} disabled={isPending}>
                 Close
               </Button>
               <Button
-                disabled={saving}
+                disabled={isPending || !isValueChanged}
                 onClick={() => {
                   let parsed: unknown
                   try {
-                    parsed = JSON.parse(draftRef.current)
+                    parsed = JSON.parse(draft)
                   } catch {
                     errorToast('Invalid JSON — please fix before saving')
                     return
@@ -267,7 +261,7 @@ export default function SchemaFieldList({ schemaName }: Props) {
                   onEditorSave(ButtonType.Submit, parsed)
                 }}
               >
-                {saving ? <Loader2 className='w-4 h-4 animate-spin mr-2' /> : null}
+                {isPending ? <Loader2 className='w-4 h-4 animate-spin mr-2' /> : null}
                 Done
               </Button>
             </div>

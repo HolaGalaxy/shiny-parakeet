@@ -58,12 +58,12 @@ const Header = () => {
           </div>
 
           <div className='hidden xl:flex items-center justify-between w-full'>
-            <div className='flex items-center gap-2'>
+            {/* <div className='flex items-center gap-2'>
               <div className='relative'>
                 <Icon icon='solar:magnifer-linear' width={18} height={18} className='absolute left-3 top-1/2 -translate-y-1/2' />
                 <Input type='text' placeholder='Search...' className='rounded-xl pl-10' />
               </div>
-            </div>
+            </div> */}
             <div className='flex w-full justify-end items-end'>
               <div className='flex gap-0 items-center'>
                 <div className='hover:text-primary px-15 group focus:ring-0 rounded-full flex justify-center items-center cursor-pointer text-gray relative' onClick={toggleMode}>
@@ -71,11 +71,11 @@ const Header = () => {
                     {theme === 'light' ? <Icon icon='tabler:moon' width='20' /> : <Icon icon='solar:sun-bold-duotone' width='20' className='group-hover:text-primary' />}
                   </span>
                 </div>
-                <div className='xl:block'>
+                {/* <div className='xl:block'>
                   <div className='flex gap-0 items-center relative'>
                     <Notifications />
                   </div>
-                </div>
+                </div> */}
                 <Profile />
               </div>
             </div>

@@ -11,6 +11,7 @@ import { isAdmin } from '@/constants/roles'
 import { cn } from '@/lib/utils'
 import type { UserRole } from '@prisma/client'
 import useSWR from 'swr'
+import { fetcher } from '@/utils/fetcher'
 import type { SchemaRow } from '@/types/schema'
 
 type SidebarProps = {
@@ -22,11 +23,6 @@ type SchemaSWRData = { schemas: SchemaRow[] }
 
 const COLUMN_HEIGHT = 'h-[28vh]'
 
-const schemaFetcher = async (url: string): Promise<SchemaSWRData> => {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('Failed to fetch schemas')
-  return res.json() as Promise<SchemaSWRData>
-}
 
 function SectionColumn({
   label,
@@ -35,6 +31,7 @@ function SectionColumn({
   emptyText,
   children,
   onClose,
+  isActive,
 }: {
   label: string
   href: string
@@ -42,6 +39,7 @@ function SectionColumn({
   emptyText: string
   children: React.ReactNode
   onClose?: () => void
+  isActive: boolean
 }) {
   const hasChildren = Array.isArray(children)
     ? children.filter(Boolean).length > 0
@@ -52,16 +50,25 @@ function SectionColumn({
       <Link
         href={href}
         onClick={onClose}
-        className='group flex items-center justify-between px-3 py-2 rounded-lg hover:bg-lightprimary transition-colors'
+        className={cn(
+          'group flex items-center justify-between px-3 py-2 rounded-lg hover:bg-lightprimary transition-colors',
+          isActive ? 'bg-lightprimary text-primary font-medium' : 'text-link dark:text-darklink hover:bg-lightprimary hover:text-primary',
+        )}
       >
-        <span className='text-[11px] font-semibold uppercase tracking-wider text-muted-foreground group-hover:text-primary transition-colors'>
+        <span className={cn(
+          'text-[11px] font-semibold uppercase tracking-wider transition-colors',
+          isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'
+        )}>
           {label}
         </span>
         <Icon
           icon={icon}
           width={16}
           height={16}
-          className='text-muted-foreground group-hover:text-primary transition-colors'
+          className={cn(
+            'transition-colors',
+            isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'
+          )}
         />
       </Link>
 
@@ -144,7 +151,7 @@ export default function SidebarLayout({ userRole, onClose }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
-  const { data } = useSWR<SchemaSWRData>(API_ROUTES.SCHEMAS, schemaFetcher, {
+  const { data } = useSWR<SchemaSWRData>(API_ROUTES.SCHEMAS, fetcher, {
     revalidateOnFocus: false,
   })
   const schemas = data?.schemas ?? []
@@ -172,10 +179,11 @@ export default function SidebarLayout({ userRole, onClose }: SidebarProps) {
       <div className='px-3 pt-3'>
         <SectionColumn
           label='Features'
-          href={ROUTES.SCHEMAS}
+          href={ROUTES.FEATURES}
           icon='solar:widget-5-bold-duotone'
           emptyText='No features yet'
           onClose={onClose}
+          isActive={pathname === ROUTES.FEATURES}
         >
           {schemas.map((s) => (
             <ItemLink
@@ -199,6 +207,7 @@ export default function SidebarLayout({ userRole, onClose }: SidebarProps) {
           icon='solar:server-square-bold-duotone'
           emptyText='No schemas yet'
           onClose={onClose}
+          isActive={pathname === ROUTES.SCHEMAS}
         >
           {schemas.map((s) => (
             <ItemLink
